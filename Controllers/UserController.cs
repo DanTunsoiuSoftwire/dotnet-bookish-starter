@@ -1,9 +1,11 @@
 ﻿using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
 using dotnet_bookish_starter.Models;
 using Microsoft.AspNetCore.Mvc;
 using Dapper;
 using dotnet_bookish_starter.AuxiliaryClasses;
 using Microsoft.Data.SqlClient;
+using Microsoft.IdentityModel.Tokens;
 
 namespace dotnet_bookish_starter.Controllers;
 
@@ -19,9 +21,40 @@ public class UserController :ControllerBase
     }
 
     [HttpGet]
-    public async Task LogIn([FromBody] UserCredentials credentials)
+    public async Task<string> LogIn([FromBody] UserCredentials credentials)
     {
-        //new JwtSecurityTokenHandler().WriteToken()
+        using var connection = new SqlConnection(_connectionString);
+        string command = String.Format("SELECT * FROM Users WHERE email like \'{0}\'", credentials.Email);
+        Console.WriteLine(command);
+        User existingUser = await connection.QuerySingleOrDefaultAsync<User>(command);
+
+        if (existingUser == null)
+        {
+            this.HttpContext.Response.StatusCode = 404;
+            return "User does not exist!!";
+        }
+
+        if (Int32.Parse(existingUser.Password_Hash) != HashClass.HashPassword(credentials.Password))
+        {
+            this.HttpContext.Response.StatusCode = 403;
+            return "Invalid password!";
+        }
+        
+        var claims = new[]  // Populate standard claims
+        {
+            new Claim(JwtRegisteredClaimNames.Email, existingUser.Email)
+        };
+        
+        const int TokenLifetimeMinutes = 60;
+        
+        var jwt = new JwtSecurityToken(
+            issuer: "https://bookish.com",
+            audience: "https://bookish.com",
+            claims: claims,
+            //Typical short lifetime used with JWTs
+            expires: DateTime.UtcNow.AddMinutes(TokenLifetimeMinutes));
+
+        return new JwtSecurityTokenHandler().WriteToken(jwt);
     }
     
     [HttpPost]

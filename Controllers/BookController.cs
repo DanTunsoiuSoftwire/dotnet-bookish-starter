@@ -64,13 +64,13 @@ public class BookController : ControllerBase
     }
     
     [HttpPost]
-    public Book AddBook([FromBody] Book book)
+    public async Task<Book> AddBook([FromBody] Book book)
     {
         // TODO implement the POST method
         using var connection = new SqlConnection(_connectionString);
         
         string checkCommand = String.Format("SELECT * FROM Books WHERE id = {0}", book.Id);
-        if (connection.Query<Book>(checkCommand).Any())
+        if ((await connection.QueryAsync<Book>(checkCommand)).Any())
         {
             this.HttpContext.Response.StatusCode = 409;
             return book;
@@ -78,11 +78,12 @@ public class BookController : ControllerBase
         
         string command = String.Format("INSERT INTO Books VALUES ({0}, \'{1}\', {2}, {3})",
             book.Id, book.Title, book.ISBN, book.copies_owned);
-        connection.Query(checkCommand);
-        return connection.Query<Book>(checkCommand).First();
+        await connection.ExecuteAsync(command);
+        return (await connection.QueryAsync<Book>(checkCommand)).First();
         throw new NotImplementedException();
     }
 
+    [Authorize]
     [HttpDelete]
     public async Task<int> DeleteBook([FromQuery] int id)
     {
