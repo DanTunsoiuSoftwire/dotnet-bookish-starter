@@ -8,7 +8,7 @@ using Microsoft.Data.SqlClient;
 namespace dotnet_bookish_starter.Controllers;
 
 [ApiController]
-[Route("book/[action]")]
+[Route("book")]
 public class BookController : ControllerBase
 {
     private readonly string _connectionString;
@@ -27,26 +27,48 @@ public class BookController : ControllerBase
         throw new NotImplementedException();
     }
     
-    [HttpGet]
-    public async Task<Book> GetBook([FromQuery] int id)
+    [HttpGet("{id}")]
+    public async Task<Book> GetBook([FromRoute] int id)
     {
         // TODO implement the GET method
+        Book foundBook = new  Book();
+        string command;
         using var connection = new SqlConnection(_connectionString);
         try
         {
-            string command = String.Format("SELECT * FROM Books WHERE id = {0}", id);
-            return (await connection.QueryAsync<Book>(command)).Single();
+            command = String.Format("SELECT * FROM Books WHERE id = {0}", id);
+            foundBook = (await connection.QueryAsync<Book>(command)).Single();
         }
         catch (Exception)
         {
             this.HttpContext.Response.StatusCode = 404;
             return new Book();
         }
+        
+        command = String.Format("SELECT * FROM Book_Author WHERE book_id = {0}", id);
+        List<Book_Author> authors = (await connection.QueryAsync<Book_Author>(command)).ToList();
+        
+        foreach (Book_Author bookAuthor in authors)
+        {
+            command = String.Format("SELECT * FROM Authors WHERE id = {0}", bookAuthor.author_Id);
+            Console.WriteLine(bookAuthor.author_Id);
+            try
+            {
+                Author authorFound = (await connection.QueryAsync<Author>(command)).Single();
+                foundBook.Authors.AddLast(authorFound.author_name);
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+            }
+        }
+
+        return foundBook;
         throw new NotImplementedException();
     }
     
-    [HttpGet]
-    public async Task<int> GetNumberOfAvailableCopies([FromQuery] int id)
+    [HttpGet("available/{id}")]
+    public async Task<int> GetNumberOfAvailableCopies([FromRoute] int id)
     {
         // TODO implement the GET method
         using var connection = new SqlConnection(_connectionString);
@@ -79,13 +101,40 @@ public class BookController : ControllerBase
         string command = String.Format("INSERT INTO Books VALUES ({0}, \'{1}\', {2}, {3})",
             book.Id, book.Title, book.ISBN, book.copies_owned);
         await connection.ExecuteAsync(command);
-        return (await connection.QueryAsync<Book>(checkCommand)).First();
+        
+        foreach (string author in book.Authors)
+        {
+            try
+            {
+                command = String.Format("SELECT * FROM Authors WHERE author_name = \'{0}\'", author);
+                Author authorFound = (await connection.QueryAsync<Author>(command)).Single();
+                command = String.Format("INSERT INTO Book_Author VALUES ({0}, {1}, {2})",
+                    book.Id * authorFound.Id, book.Id, authorFound.Id);
+                await connection.ExecuteAsync(command);
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+                this.HttpContext.Response.StatusCode = 404;
+                return new Book();
+            }
+        }
+        
+        Book addedBook = (await connection.QueryAsync<Book>(checkCommand)).First();
+        command = String.Format("SELECT * FROM Books WHERE book_id = {0}", addedBook.Id);
+        List<Book_Author> authors = (await connection.QueryAsync<Book_Author>(command)).ToList();
+        foreach (Book_Author bookAuthor in authors)
+        {
+            command = String.Format("SELECT * FROM Authors WHERE id = {0}", bookAuthor.author_Id);
+            addedBook.Authors.AddLast((await connection.QueryAsync<Author>(command)).Single().author_name);
+        }
+        return addedBook;
         throw new NotImplementedException();
     }
 
     [Authorize]
-    [HttpDelete]
-    public async Task<int> DeleteBook([FromQuery] int id)
+    [HttpDelete("{id}")]
+    public async Task<string> DeleteBook([FromRoute] int id)
     {
         using var connection = new SqlConnection(_connectionString);
         string command = String.Format("SELECT * FROM Books WHERE id = {0}", id);
@@ -94,20 +143,20 @@ public class BookController : ControllerBase
             connection.Query<Book>(command).Single();
             command = String.Format("DELETE FROM Books WHERE id = {0}", id);
             await connection.QueryAsync<Book>(command);
-            return id;
+            return "Book deleted successfully.";
         }
-        catch (Exception)
+        catch (Exception e)
         {
-            this.HttpContext.Response.StatusCode = 404;
-            return -1;
+            Console.WriteLine(e);
+            return "Book did not exist.";
         }
     }
 
-    [HttpPatch]
-    public async Task<Book> UpdateBook([FromBody] Book book)
+    [HttpPatch("{id}")]
+    public async Task<Book> UpdateBook([FromBody] Book book, [FromRoute]  int id)
     {
         using var connection = new SqlConnection(_connectionString);
-        string command = String.Format("SELECT * FROM Books WHERE id = {0}", book.Id);
+        string command = String.Format("SELECT * FROM Books WHERE id = {0}", id);
         try
         {
             Book existingBook = connection.Query<Book>(command).Single();
@@ -134,3 +183,4 @@ public class BookController : ControllerBase
         }
     }
 }
+

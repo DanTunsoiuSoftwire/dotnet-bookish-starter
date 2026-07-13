@@ -7,4 +7,6 @@ public class Book
     public string Title { get; set; } = null!;
     public int ISBN {get; set;}
     public int copies_owned {get; set;}
+    public LinkedList<string> Authors { get; set; } = new LinkedList<string>();
 }
+
