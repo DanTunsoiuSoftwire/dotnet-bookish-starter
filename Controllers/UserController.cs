@@ -59,12 +59,12 @@ public class UserController : ControllerBase
         User existingUser = await _userServices.UpdatePassword(request);
         if (existingUser.Email == "password incorrect")
         {
-            this.HttpContext.Response.StatusCode = 403;
+            this.HttpContext.Response.StatusCode = 401;
         }
 
         if (existingUser.Email == null!)
         {
-            this.HttpContext.Response.StatusCode = 403;
+            this.HttpContext.Response.StatusCode = 401;
             existingUser = new User();
         }
         
@@ -77,12 +77,12 @@ public class UserController : ControllerBase
         User existingUser = await _userServices.UpdateEmail(request);
         if (existingUser.Email == "password incorrect")
         {
-            this.HttpContext.Response.StatusCode = 403;
+            this.HttpContext.Response.StatusCode = 401;
         }
 
         if (existingUser.Email == null!)
         {
-            this.HttpContext.Response.StatusCode = 403;
+            this.HttpContext.Response.StatusCode = 401;
             existingUser = new User();
         }
         
