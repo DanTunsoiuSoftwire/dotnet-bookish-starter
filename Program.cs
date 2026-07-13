@@ -13,7 +13,7 @@ builder.Services.AddOpenApi();
 
 builder.Services.AddAuthentication(options =>
     {
-        options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme; // This is to use the JWT token with the "Bearer" scheme
+        options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
         options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
     })
     .AddJwtBearer(jwtOptions =>
@@ -24,11 +24,8 @@ builder.Services.AddAuthentication(options =>
             ValidateAudience = true,
             ValidateLifetime = true,
             ValidateIssuerSigningKey = true,
-            // ValidIssuer would be based on your IdP
             ValidIssuer = "https://bookish.com",
-            // ValidAudience would be based on your IdP
             ValidAudience = "https://bookish.com",
-            // IssuerSigningKey would not be specified if using an IdP
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.ASCII.GetBytes("SecretKey00000000000000000000000"))
         };
     });

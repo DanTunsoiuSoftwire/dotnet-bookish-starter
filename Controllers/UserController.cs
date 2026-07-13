@@ -18,7 +18,7 @@ public class UserController : ControllerBase
         _userServices = new UserServices(_connectionString);
     }
 
-    [HttpGet("login")]
+    [HttpPost("login")]
     public async Task<string> LogIn([FromBody] UserCredentials credentials)
     {
         string token = await _userServices.LogIn(credentials);

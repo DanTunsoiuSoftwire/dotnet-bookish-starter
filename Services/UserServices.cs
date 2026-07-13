@@ -35,7 +35,7 @@ public class UserServices
             return "";
         }
         
-        var claims = new[]  // Populate standard claims
+        var claims = new[]
         {
             new Claim(JwtRegisteredClaimNames.Email, existingUser.Email)
         };
@@ -46,7 +46,6 @@ public class UserServices
             issuer: "https://bookish.com",
             audience: "https://bookish.com",
             claims: claims,
-            //Typical short lifetime used with JWTs
             expires: DateTime.UtcNow.AddMinutes(TokenLifetimeMinutes),
             signingCredentials: new(new SymmetricSecurityKey(Encoding.ASCII.GetBytes("SecretKey00000000000000000000000")),
                 SecurityAlgorithms.HmacSha256Signature));
@@ -62,11 +61,18 @@ public class UserServices
         if (existingUser != null){
             return new User();
         }
-        
-        command = String.Format("INSERT INTO Users VALUES ({0}, \'{1}\', \'{2}\')",
-            user.Id, user.Email, HashClass.HashPassword(user.Password_Hash));
-        await connection.ExecuteAsync(command);
-        command = String.Format("SELECT * FROM Users WHERE id = {0}", user.Id);
+
+        try
+        {
+            command = String.Format("INSERT INTO Users VALUES ({0}, \'{1}\', \'{2}\')",
+                user.Id, user.Email, HashClass.HashPassword(user.Password_Hash));
+            await connection.ExecuteAsync(command);
+            command = String.Format("SELECT * FROM Users WHERE id = {0}", user.Id);
+        }
+        catch (Exception e)
+        {
+            return new User();
+        }
         
         return await connection.QuerySingleOrDefaultAsync<User>(command);
     }
