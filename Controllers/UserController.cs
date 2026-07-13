@@ -1,5 +1,6 @@
 ﻿using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
+using System.Text;
 using dotnet_bookish_starter.Models;
 using Microsoft.AspNetCore.Mvc;
 using Dapper;
@@ -25,7 +26,6 @@ public class UserController :ControllerBase
     {
         using var connection = new SqlConnection(_connectionString);
         string command = String.Format("SELECT * FROM Users WHERE email like \'{0}\'", credentials.Email);
-        Console.WriteLine(command);
         User existingUser = await connection.QuerySingleOrDefaultAsync<User>(command);
 
         if (existingUser == null)
@@ -52,7 +52,9 @@ public class UserController :ControllerBase
             audience: "https://bookish.com",
             claims: claims,
             //Typical short lifetime used with JWTs
-            expires: DateTime.UtcNow.AddMinutes(TokenLifetimeMinutes));
+            expires: DateTime.UtcNow.AddMinutes(TokenLifetimeMinutes),
+            signingCredentials: new(new SymmetricSecurityKey(Encoding.ASCII.GetBytes("SecretKey00000000000000000000000")),
+                SecurityAlgorithms.HmacSha256Signature));
 
         return new JwtSecurityTokenHandler().WriteToken(jwt);
     }

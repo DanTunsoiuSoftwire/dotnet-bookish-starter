@@ -1,3 +1,4 @@
+using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 
@@ -10,7 +11,11 @@ builder.Services.AddControllers();
 builder.Services.AddOpenApi();
 
 
-builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+builder.Services.AddAuthentication(options =>
+    {
+        options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme; // This is to use the JWT token with the "Bearer" scheme
+        options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+    })
     .AddJwtBearer(jwtOptions =>
     {
         jwtOptions.TokenValidationParameters = new TokenValidationParameters
@@ -18,14 +23,17 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidateIssuer = true,
             ValidateAudience = true,
             ValidateLifetime = true,
-            ValidateIssuerSigningKey = false,
+            ValidateIssuerSigningKey = true,
             // ValidIssuer would be based on your IdP
             ValidIssuer = "https://bookish.com",
             // ValidAudience would be based on your IdP
             ValidAudience = "https://bookish.com",
             // IssuerSigningKey would not be specified if using an IdP
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.ASCII.GetBytes("SecretKey00000000000000000000000"))
         };
     });
+
+builder.Services.AddAuthorization();
 
 var app = builder.Build();
 
