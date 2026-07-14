@@ -1,6 +1,7 @@
 ﻿using dotnet_bookish_starter.Models;
 using Microsoft.AspNetCore.Mvc;
 using Dapper;
+using dotnet_bookish_starter.Services;
 using Microsoft.Data.SqlClient;
 
 namespace dotnet_bookish_starter.Controllers;
@@ -10,80 +11,60 @@ namespace dotnet_bookish_starter.Controllers;
 public class AuthorController : ControllerBase
 {
     private readonly string _connectionString;
+    AuthorServices _authorServices;
  
     public AuthorController(IConfiguration config)
     {
         _connectionString = config.GetConnectionString("DbConnectionString") ?? "";
+        _authorServices = new AuthorServices(_connectionString);
     }
 
     [HttpPost]
     public async Task<Author> AddAuthor([FromBody] Author author)
     {
-        using var connection = new SqlConnection(_connectionString);
-        string command = String.Format("SELECT * FROM Authors WHERE id = {0}", author.Id);
-        Author existingAuthor = await connection.QuerySingleOrDefaultAsync<Author>(command);
-        if (existingAuthor != null){
+        Author authorAdded = await _authorServices.AddAuthor(author);
+        if (authorAdded.author_name == null!)
+        {
+            this.HttpContext.Response.StatusCode = 500;
+            return authorAdded;
+        }
+
+        if (authorAdded.author_name != author.author_name)
+        {
             this.HttpContext.Response.StatusCode = 409;
-            return existingAuthor;
+            return authorAdded;
         }
         
-        command = String.Format("INSERT INTO Authors VALUES ({0}, \'{1}\')",
-            author.Id, author.author_name);
-        await connection.ExecuteAsync(command);
-        command = String.Format("SELECT * FROM Authors WHERE id = {0}", author.Id);
-        
-        return await connection.QuerySingleOrDefaultAsync<Author>(command);;
+        return authorAdded;
     }
     
     [HttpGet("{id}")]
     public async Task<Author> GetAuthor([FromRoute] int id)
     {
-        using var connection = new SqlConnection(_connectionString);
-        string command = String.Format("SELECT * FROM Authors WHERE id = {0}", id);
-        try
-        {
-            return (await connection.QueryAsync<Author>(command)).Single();
-        }
-        catch (Exception)
+        Author authorFound = await _authorServices.GetAuthor(id);
+        if (authorFound.author_name == null!)
         {
             this.HttpContext.Response.StatusCode = 404;
-            return new Author();
         }
+        
+        return authorFound;
     }
     
     [HttpGet("name/{name}")]
     public async Task<Author> GetAuthorByName([FromRoute] string name)
     {
-        using var connection = new SqlConnection(_connectionString);
-        string command = String.Format("SELECT * FROM Authors WHERE author_name = \'{0}\'", name);
-        try
-        {
-            return (await connection.QueryAsync<Author>(command)).Single();
-        }
-        catch (Exception)
+        Author authorFound = await _authorServices.GetAuthorByName(name);
+        if (authorFound.author_name == null!)
         {
             this.HttpContext.Response.StatusCode = 404;
-            return new Author();
         }
+        
+        return authorFound;
     }
 
     [HttpDelete("{id}")]
-    public async Task<int> DeleteAuthor([FromRoute] int id)
+    public async Task<string> DeleteAuthor([FromRoute] int id)
     {
-        using var connection = new SqlConnection(_connectionString);
-        string command = String.Format("SELECT * FROM Authors WHERE id = {0}", id);
-
-        try
-        {
-            (await connection.QueryAsync<User>(command)).Single();
-            command = String.Format("DELETE FROM Authors WHERE id = {0}", id);
-            await connection.ExecuteAsync(command);
-            return 0;
-        }
-        catch (Exception)
-        {
-            this.HttpContext.Response.StatusCode = 404;
-            return -1;
-        }
+        return await _authorServices.DeleteAuthor(id);
     }
 }
