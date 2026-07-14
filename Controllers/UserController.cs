@@ -37,8 +37,10 @@ public class UserController : ControllerBase
         if (addedUser.Email == null!)
         {
             this.HttpContext.Response.StatusCode = 409;
+            return addedUser;
         }
         
+        this.HttpContext.Response.StatusCode = 201;
         return addedUser;
     }
 

@@ -63,6 +63,7 @@ public class BookController : ControllerBase
             return bookAdded;
         }
 
+        this.HttpContext.Response.StatusCode = 201;
         return bookAdded;
     }
 

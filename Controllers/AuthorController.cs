@@ -35,6 +35,7 @@ public class AuthorController : ControllerBase
             return authorAdded;
         }
         
+        this.HttpContext.Response.StatusCode = 201;
         return authorAdded;
     }
     
